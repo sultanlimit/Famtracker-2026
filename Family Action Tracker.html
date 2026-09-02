@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Action Tracker</title>
+<style>
+  :root {
+    --green-deep: #0F4C2C;
+    --green: #1B7A43;
+    --green-mid: #2F9E5C;
+    --green-pale: #EAF6EF;
+    --amber: #C08A2E;
+    --amber-pale: #FBF2E2;
+    --ink: #16241B;
+    --gray: #6B7A70;
+    --border: #DCE7E0;
+    --bg: #F6FAF7;
+    --white: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
+  .top {
+    background: linear-gradient(135deg, var(--green-deep), var(--green));
+    border-radius: 16px;
+    padding: 22px 20px;
+    color: #fff;
+    margin-bottom: 18px;
+  }
+  .top h1 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+  .top p { margin: 0; font-size: 13px; color: #D8EEDF; }
+  .progress-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .progress-track {
+    flex: 1; height: 8px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: #fff; border-radius: 99px; transition: width 0.4s ease; width: 0%; }
+  .progress-pct { font-size: 14px; font-weight: 700; min-width: 40px; text-align: right; }
+  .status-line { font-size: 12px; color: #D8EEDF; margin-top: 6px; }
+
+  .section {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; cursor: pointer; user-select: none;
+  }
+  .section-head-left { display: flex; align-items: center; gap: 10px; }
+  .section-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-mid); flex-shrink: 0; }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .section-sub { font-size: 12px; color: var(--gray); margin-top: 1px; }
+  .section-count { font-size: 12px; color: var(--green); font-weight: 700; background: var(--green-pale); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .chev { font-size: 11px; color: var(--gray); transition: transform 0.2s ease; margin-left: 6px; }
+  .chev.open { transform: rotate(90deg); }
+
+  .section-body { padding: 0 16px 14px; display: none; }
+  .section-body.open { display: block; }
+
+  .item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-top: 1px solid var(--border);
+  }
+  .item:first-child { border-top: none; }
+  .checkbox {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border);
+    flex-shrink: 0; margin-top: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: var(--white); transition: all 0.15s ease;
+  }
+  .checkbox.checked { background: var(--green); border-color: var(--green); }
+  .checkbox svg { width: 12px; height: 12px; display: none; }
+  .checkbox.checked svg { display: block; }
+  .item-text { flex: 1; }
+  .item-label { font-size: 14px; line-height: 1.4; color: var(--ink); }
+  .item-label.done { color: var(--gray); text-decoration: line-through; }
+  .item-tag {
+    display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700;
+    color: var(--amber); background: var(--amber-pale); padding: 2px 8px; border-radius: 99px;
+  }
+  .phase-header {
+    font-size: 12px; font-weight: 700; color: var(--green);
+    text-transform: uppercase; letter-spacing: 0.02em;
+    padding: 14px 0 6px; border-top: 1px solid var(--border);
+  }
+  .phase-header:first-child { border-top: none; padding-top: 4px; }
+
+  .footer-note {
+    font-size: 12px; color: var(--gray); text-align: center; margin-top: 8px; line-height: 1.5;
+  }
+  .reset-btn {
+    display: block; margin: 16px auto 0; font-size: 12px; color: var(--gray);
+    background: none; border: 1px solid var(--border); padding: 6px 14px; border-radius: 99px; cursor: pointer;
+  }
+  .loading { text-align: center; padding: 40px 0; color: var(--gray); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Family Action Tracker</h1>
+    <p>Rencana Likuiditas, Rumah Batam, Xanh SM &amp; Pendidikan</p>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+    <div class="status-line" id="statusLine">Memuat progress...</div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="footer-note">Progress tersimpan otomatis dan bisa dipantau bersama oleh seluruh keluarga.</div>
+  <button class="reset-btn" id="resetBtn">Reset semua checklist</button>
+</div>
+
+<script>
+const DATA = [
+  {
+    id: "liquidity",
+    title: "Likuiditas Mendesak",
+    sub: "Target Rp 15 juta (hutang jatuh tempo ± Rp 7-8 juta)",
+    items: [
+      { id: "l1a", label: "Tebus gadai laptop dan HP", tag: "Sudah jatuh tempo" },
+      { id: "l1b", label: "Lunasi Paylater", tag: "Sudah jatuh tempo" },
+      { id: "l1c", label: "Lunasi Shopee Pinjam", tag: "Sudah jatuh tempo" },
+      { id: "l1d", label: "Lunasi Indodana", tag: "Sudah jatuh tempo" },
+      { id: "l2", label: "Sepakati buffer harian Umi", tag: "Rp 50 ribu/hari" },
+      { id: "l3", label: "Siapkan dana pergerakan awal" },
+      { id: "l4", label: "Cek legalitas semua platform pinjaman via OJK (157 / cekfintech.ojk.go.id)" }
+    ]
+  },
+  {
+    id: "batam",
+    title: "Rumah Batam - Gadai & Kost Putri",
+    sub: "Dana Rp 300 juta - 3 fase",
+    items: [
+      { phase: "Fase 1 - Persiapan & Legal (Minggu 1-2)" },
+      { id: "b1", label: "Appraisal / penilaian nilai Rumah Batam", tag: "Minggu 1" },
+      { id: "b2", label: "Cari dan pilih pemberi gadai (bank/lembaga/perorangan terpercaya)", tag: "Minggu 1" },
+      { id: "b3", label: "Negosiasi nilai gadai, bunga, dan jangka waktu tebus", tag: "Minggu 1-2" },
+      { id: "b4", label: "Review draft akta bersama notaris - pastikan klausul hak tebus tertulis eksplisit", tag: "Minggu 2" },
+      { id: "b5", label: "Tanda tangan akta gadai di notaris", tag: "Minggu 2" },
+      { id: "b6", label: "Dana gadai cair ke rekening (Rp 300 juta)", tag: "Minggu 2" },
+
+      { phase: "Fase 2 - Renovasi (Bulan 1-3)" },
+      { id: "b7", label: "Survey lokasi dan buat RAB (rencana anggaran biaya) renovasi", tag: "Bulan 1" },
+      { id: "b8", label: "Cari dan sepakati kontraktor/tukang renovasi", tag: "Bulan 1" },
+      { id: "b9", label: "Bongkar dan sekat ruangan jadi kamar-kamar kost", tag: "Bulan 1-2" },
+      { id: "b10", label: "Instalasi listrik dan air per kamar", tag: "Bulan 2" },
+      { id: "b11", label: "Finishing: cat, pintu, kunci per kamar", tag: "Bulan 2-3" },
+      { id: "b12", label: "Pengadaan furniture dasar (kasur, lemari, meja)", tag: "Bulan 3" },
+      { id: "b13", label: "Renovasi selesai dan serah terima", tag: "Bulan 3" },
+
+      { phase: "Fase 3 - Promosi & Operasional Kost (Bulan 3-4)" },
+      { id: "b14", label: "Tentukan harga sewa dan aturan kost (khusus putri)", tag: "Bulan 3" },
+      { id: "b15", label: "Buat listing (medsos, marketplace kost, spanduk lokasi)", tag: "Bulan 3" },
+      { id: "b16", label: "Terima booking / DP dari calon penghuni", tag: "Bulan 3-4" },
+      { id: "b17", label: "Penghuni pertama masuk", tag: "Bulan 4" },
+      { id: "b18", label: "Okupansi penuh / target tercapai", tag: "Bulan 4+" }
+    ]
+  },
+  {
+    id: "xanh",
+    title: "Mitra Xanh SM Green (Black Plate)",
+    sub: "Jembatan pendapatan harian",
+    items: [
+      { id: "x1", label: "Siapkan dokumen (KTP, SIM A umum, STNK/BPKB atau skema partner unit)" },
+      { id: "x2", label: "Daftar dan verifikasi mitra" },
+      { id: "x3", label: "Ikuti training dan aktivasi akun" },
+      { id: "x4", label: "Mulai narik harian" }
+    ]
+  },
+  {
+    id: "abi",
+    title: "Pendidikan Abi - S2 Eropa",
+    sub: "Beasiswa sambil kerja",
+    items: [
+      { id: "a1", label: "List beasiswa Eropa yang izinkan kerja part-time" },
+      { id: "a2", label: "Siapkan dokumen aplikasi (CV, motivation letter, transkrip)" },
+      { id: "a3", label: "Submit aplikasi beasiswa" },
+      { id: "a4", label: "Hasil seleksi keluar" }
+    ]
+  },
+  {
+    id: "allan",
+    title: "Pendidikan Allan - Jepang Juli 2027",
+    sub: "Retake N5 - intake Juli 2027 - 4 fase",
+    items: [
+      { phase: "Fase 1 - Persiapan Ujian N5 (Sekarang - Okt 2026)" },
+      { id: "n1a", label: "Ikut kelas/bimbel intensif N5, fokus grammar dan kanji yang belum lulus", tag: "Berjalan" },
+      { id: "n1b", label: "Latihan soal N5 mingguan (mock test)", tag: "Mingguan" },
+      { id: "n1c", label: "Evaluasi progress belajar tiap bulan", tag: "Bulanan" },
+      { id: "n1d", label: "Daftar ujian retake N5", tag: "Sep 2026" },
+      { id: "n2", label: "Ujian N5 (retake)", tag: "Okt 2026" },
+
+      { phase: "Fase 2 - Pendaftaran Program (Nov 2026)" },
+      { id: "n3a", label: "Siapkan dokumen pendaftaran (ijazah, KK, akta lahir, pas foto)", tag: "Nov 2026" },
+      { id: "n3b", label: "Submit hasil N5 dan formulir pendaftaran", tag: "Nov 2026" },
+      { id: "n3c", label: "Bayar biaya pendaftaran program", tag: "Nov 2026" },
+      { id: "n3d", label: "Konfirmasi diterima di program intake Juli 2027", tag: "Des 2026" },
+
+      { phase: "Fase 3 - Masa Persiapan (Des 2026 - Jun 2027)" },
+      { id: "n4a", label: "Lanjut kelas bahasa Jepang level N4", tag: "Des 2026 - Mar 2027" },
+      { id: "n4b", label: "Kursus IELTS / bahasa Inggris dasar (jika program mensyaratkan)", tag: "Jan - Apr 2027" },
+      { id: "n4c", label: "Mengajar paruh waktu (pengalaman + bantu cashflow keluarga)", tag: "Des 2026 - Jun 2027" },
+      { id: "n4d", label: "Latihan hidup mandiri: memasak, cuci baju, budgeting harian", tag: "Feb - Jun 2027" },
+      { id: "n4e", label: "Medical check-up dan vaksinasi yang disyaratkan program", tag: "Mar 2027" },
+      { id: "n4f", label: "Urus / perpanjang paspor", tag: "Mar 2027" },
+      { id: "n4g", label: "Siapkan dokumen visa pelajar Jepang", tag: "Apr - Mei 2027" },
+      { id: "n4h", label: "Ikut sesi orientasi pra-keberangkatan dari lembaga", tag: "Mei 2027" },
+      { id: "n4i", label: "Booking tiket pesawat dan akomodasi awal di Jepang", tag: "Jun 2027" },
+
+      { phase: "Fase 4 - Keberangkatan (Juli 2027)" },
+      { id: "n5a", label: "Visa pelajar terbit", tag: "Jun 2027" },
+      { id: "n5b", label: "Packing dan persiapan akhir", tag: "Jun 2027" },
+      { id: "n5c", label: "Keberangkatan ke Jepang", tag: "Jul 2027" },
+      { id: "n5d", label: "Orientasi kampus/lembaga minggu pertama di Jepang", tag: "Jul 2027" }
+    ]
+  }
+];
+
+let state = {};
+
+function checkIcon() {
+  return '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+function allItemIds() {
+  return DATA.flatMap(s => s.items.filter(i => i.id).map(i => i.id));
+}
+
+function render() {
+  const container = document.getElementById("sections");
+  container.innerHTML = "";
+  const total = allItemIds().length;
+  const done = allItemIds().filter(id => state[id]).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressPct").textContent = pct + "%";
+  document.getElementById("statusLine").textContent = done + " dari " + total + " langkah selesai";
+
+  DATA.forEach(section => {
+    const secDone = section.items.filter(i => i.id && state[i.id]).length;
+    const secTotal = section.items.filter(i => i.id).length;
+    const isOpen = state["__open_" + section.id] !== false;
+
+    const secEl = document.createElement("div");
+    secEl.className = "section";
+
+    const head = document.createElement("div");
+    head.className = "section-head";
+    head.innerHTML =
+      '<div class="section-head-left">' +
+        '<span class="section-dot"></span>' +
+        '<div><div class="section-title">' + section.title + '</div>' +
+        '<div class="section-sub">' + section.sub + '</div></div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;">' +
+        '<span class="section-count">' + secDone + '/' + secTotal + '</span>' +
+        '<span class="chev' + (isOpen ? ' open' : '') + '">&#9656;</span>' +
+      '</div>';
+    head.addEventListener("click", () => {
+      state["__open_" + section.id] = !isOpen;
+      save();
+      render();
+    });
+
+    const body = document.createElement("div");
+    body.className = "section-body" + (isOpen ? " open" : "");
+
+    section.items.forEach(item => {
+      if (item.phase) {
+        const ph = document.createElement("div");
+        ph.className = "phase-header";
+        ph.textContent = item.phase;
+        body.appendChild(ph);
+        return;
+      }
+      const checked = !!state[item.id];
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML =
+        '<div class="checkbox' + (checked ? ' checked' : '') + '" data-id="' + item.id + '">' + checkIcon() + '</div>' +
+        '<div class="item-text">' +
+          '<div class="item-label' + (checked ? ' done' : '') + '">' + item.label + '</div>' +
+          (item.tag ? '<span class="item-tag">' + item.tag + '</span>' : '') +
+        '</div>';
+      row.querySelector(".checkbox").addEventListener("click", () => {
+        state[item.id] = !state[item.id];
+        save();
+        render();
+      });
+      body.appendChild(row);
+    });
+
+    secEl.appendChild(head);
+    secEl.appendChild(body);
+    container.appendChild(secEl);
+  });
+}
+
+async function save() {
+  try {
+    await window.storage.set("family-tracker-state", JSON.stringify(state), true);
+  } catch (e) {
+    console.error("Storage save error:", e);
+  }
+}
+
+async function load() {
+  try {
+    const result = await window.storage.get("family-tracker-state", true);
+    if (result && result.value) {
+      state = JSON.parse(result.value);
+    }
+  } catch (e) {
+    state = {};
+  }
+  render();
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  state = {};
+  save();
+  render();
+});
+
+load();
+</script>
+</body>
+</html>
